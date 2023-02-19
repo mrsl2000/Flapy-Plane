@@ -1,3 +1,4 @@
+import os
 import pygame
 import time
 import random
@@ -8,6 +9,10 @@ from box_list import BoxList
 from evolution import Evolution
 from config import CONFIG
 from util import save_generation, load_generation
+
+# Delete record file for every running times
+if os.path.exists("record.txt"):
+    os.remove("record.txt")
 
 # argument parser
 parser = argparse.ArgumentParser(

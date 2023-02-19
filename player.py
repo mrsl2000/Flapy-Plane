@@ -1,7 +1,9 @@
+import math
 import pygame
 import numpy as np
 
 from nn import NeuralNetwork
+from copy import deepcopy
 from config import CONFIG
 
 
@@ -99,14 +101,62 @@ class Player():
 
     
     def think(self, mode, box_lists, agent_position, velocity):
+        
+        # Prameters
+        agentX, agentY = agent_position
+        height, width = CONFIG['HEIGHT'], CONFIG['WIDTH']
+        screen_diameter = math.sqrt(height**2 + width**2)
+        
+        # Find the next boxs
+        tmp_max = None
+        next_box_list = None
+        for box_list in box_lists:
+            if tmp_max is None or tmp_max > box_list.x:
+                tmp_max = box_list.x
+                next_box_list = box_list
+        
+        data = []
+        if next_box_list:
 
-        # TODO
-        # mode example: 'helicopter'
-        # box_lists: an array of `BoxList` objects
-        # agent_position example: [600, 250]
-        # velocity example: 7
+            # distance between top and bottom boxes
+            data.append(agentY/height)
+            data.append((height-agentY)/height)
+            
+            # distance between agent and gap of boxs
+            data.append(math.sqrt((next_box_list.x-agentX)**2 + 
+            (next_box_list.gap_mid-agentY)**2)/screen_diameter)
+            
+            # Y distance between agentY and bottom and top of gap
+            data.append((agentY - next_box_list.gap_offset * 60)/height)
+            data.append((agentY - (next_box_list.gap_offset + next_box_list.gap_num) * 60)/height)
+            
+        # Just to have not empty data and it is agent speed
+        data.append(velocity/10)
 
-        direction = -1
+        # This shit is because For last Helli the next_box_list is None and it took one hour
+        if next_box_list:
+            out = self.nn.forward(np.reshape(np.array(data), (6, 1)))
+        else:
+            return -1
+
+        # Helicopter $ Gravity Mode    
+        if mode == 'helicopter' or mode == 'gravity':
+            if out[0][0] > 0.5:
+                direction = 1
+            else:
+                direction = -1
+
+        # Thrust Mode 
+        if mode == 'thrust':
+            if out[0][0] > 2/3:
+                direction = 1
+
+            elif out[0][0] > 1/3:
+                direction = 0
+
+            else:
+                direction = -1
+        
         return direction
 
     def collision_detection(self, mode, box_lists, camera):
